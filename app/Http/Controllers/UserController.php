@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 
 class UserController extends Controller
@@ -15,6 +16,7 @@ class UserController extends Controller
             'total'    => 0
         ];
         
+        DB::beginTransaction();
         foreach ($request->get('results') as $note){
             
             $user = User::updateOrCreate(
@@ -31,7 +33,7 @@ class UserController extends Controller
             }
             
         }
-        
+        DB::commit();
         $data['total']  =  $users->count();
         
         return response()->json($data);
