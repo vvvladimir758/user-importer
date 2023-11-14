@@ -5,10 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use Carbon\Carbon;
 
 class UserController extends Controller
 {
-    public function update(Request $request, User $users){
+    public function update(Request $request, User $user){
 
         $data = [
             'updated'  => 0,
@@ -16,25 +17,32 @@ class UserController extends Controller
             'total'    => 0
         ];
         
+       
+        
+       $users = [];
+       foreach ($request->get('results') as $note){
+           
+           $users[] =  [
+               'first_name'  => $note['name']['first'],
+               'last_name'   => $note['name']['last'],
+               'email'       => $note['email'],
+               'age'         => $note['dob']['age']
+           ];
+           
+       }
+       
+        $now = Carbon::now();
         DB::beginTransaction();
-        foreach ($request->get('results') as $note){
-            
-            $user = User::updateOrCreate(
-                ['first_name' => $note['name']['first'], 'last_name' => $note['name']['last']],
-                ['email' => $note['email'], 'age'=>$note['dob']['age']]
-                );
-            
-            if(!$user->wasRecentlyCreated &&  $user->wasChanged()){
-                $data['updated']++;
-            }
-            
-            if($user->wasRecentlyCreated){
-                $data['created']++; 
-            }
-            
-        }
+        
+        User::upsert([ ...$users], ['first_name','last_name'], ['email', 'age']);
+
         DB::commit();
-        $data['total']  =  $users->count();
+
+        $data['updated'] = User::where('updated_at','>=', $now)
+                                ->where('created_at','<', $now)
+                                ->get()->count();
+        $data['created'] = User::where('created_at','>=', $now)->get()->count();
+        $data['total']  =  $user->count();
         
         return response()->json($data);
 
